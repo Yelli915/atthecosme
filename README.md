@@ -4,6 +4,8 @@
 
 > 그라운딩을 적용한 멀티모달 LLM 대비 **성분 재현율 +8.6%p, 건당 비용 약 83% 절감, 추출 p95 지연 6.2초 → 1.4초**
 > (벤치마크 N=100 기준)
+>
+> ⚠️ **위 수치는 아직 실측이 아닙니다.** 실제 파이프라인 코드가 없는 상태에서 작성된 문서상 목표/가정치이며, 이번 세션에서 코드를 처음부터 구현 중입니다. 실측 전까지는 목표값으로만 참고하세요. 진행 상황은 [`records/`](./records/) 참고.
 
 ---
 
@@ -32,8 +34,8 @@
 
 작은 글자가 밀집된 후면 라벨에서 멀티모달 모델은 성분을 건너뛰는 경향을 보였습니다. 전용 OCR로 텍스트를 먼저 빠짐없이 뽑고 이후를 텍스트 처리로 구성한 구조가 재현율과 비용 모두에서 유리했습니다.
 
-- 측정 시점: `TODO`
-- 사용 모델/엔진: `TODO: OCR 엔진`, `TODO: 구조화 출력 모델`, 비교군 GPT-4o-mini
+- 측정 시점: 미측정 (표는 목표치 — records/01-사실정리.md에서 실측 후 갱신)
+- 채택 구조(안 4) 사용 엔진: OCR = PaddleOCR, 구조화 출력 = Ollama(qwen2.5:7b) — 로컬 실행. 비교군 GPT-4o-mini
 
 ---
 
@@ -76,34 +78,49 @@ flowchart TD
 평가 실행:
 
 ```bash
-# TODO: 실제 명령어로 교체
-python eval/run_benchmark.py --dataset data/benchmark --pipeline ocr_rag
+python -m eval.run_benchmark --manifest data/benchmark/manifest.json
 ```
+
+`manifest.json`은 아직 없습니다 — 포맷은 `data/benchmark/manifest.example.json` 참고, 실제 100/150건 데이터 소재는 `records/01-사실정리.md`에서 확인 예정.
 
 ---
 
 ## 프로젝트 구조
 
 ```
-# TODO: 실제 디렉터리 구조로 교체
 .
-├── pipeline/        # OCR, 검색, 구조화 출력, 대조
-├── eval/            # 벤치마크 및 지표 계산
-├── data/            # 벤치마크셋, 성분 마스터 DB
-└── README.md
+├── pipeline/
+│   ├── ocr/                 # Stage 1. OCR
+│   ├── retrieval/           # Stage 2. 하이브리드 검색
+│   ├── structured_output/   # Stage 3. 구조화 출력
+│   └── match/                # Stage 4. 대조 (미구현)
+├── eval/                    # 벤치마크 및 지표 계산
+├── data/
+│   ├── benchmark/           # 벤치마크셋 100건 + 확장셋 150건
+│   └── ingredient_db/       # 성분 마스터 DB
+├── records/                 # Sprint 1 단계별 작업 기록 (계획.md 대응)
+├── README.md
+├── 기획서.md
+└── 계획.md
 ```
+
+> 각 폴더에 목적과 미완 항목을 적은 README.md가 있습니다. 현재는 문서/계획 단계이며 실제 코드는 아직 없습니다 — 진행 상황은 [`records/`](./records/) 참고.
 
 ## 실행 방법
 
 ```bash
-# TODO: 실제 설치 및 실행 방법으로 교체
 git clone <repo-url>
 cd <repo>
 pip install -r requirements.txt
-cp .env.example .env   # API 키 설정
+
+# Stage 3용 로컬 LLM 준비 (Ollama 설치 후)
+ollama pull qwen2.5:7b
+
+# 성분 마스터 DB 초기화 (현재는 샘플 시드 15건 — 실제 DB로 교체 예정)
+python -m pipeline.retrieval.db
 ```
 
-- 성분 마스터 DB 출처: `TODO`
+- 성분 마스터 DB 출처: 아직 확정 안 됨 — 현재는 `data/ingredient_db/seed_ingredients.csv` 샘플 15건으로 코드만 동작 확인 가능한 상태. 실제 출처는 `records/01-사실정리.md`에서 확인 예정.
 
 ---
 
@@ -111,12 +128,14 @@ cp .env.example .env   # API 키 설정
 
 | 항목 | 상태 |
 | --- | --- |
-| 4안 아키텍처 비교 | 완료 |
-| OCR → 검색 → 구조화 출력 파이프라인 | 완료 |
-| 대조 (Stage 4) | `TODO` |
-| 신뢰도 결합 및 임계치 선정 | 진행 예정 |
+| 4안 아키텍처 비교 수치 | 미검증 — 코드 없이 작성된 문서상 목표치, 실측 필요 |
+| Stage 1~3 (OCR → 하이브리드 검색 → 구조화 출력) | 코드 구현 완료, 실제 라벨 이미지로 미검증 |
+| Stage 4 (대조) | 코드 구현 완료, 미검증 |
+| Stage 5 (신뢰도 분기) | 검색 점수만 사용한 임시 버전 구현, 임계치(0.90)는 미확정 플레이스홀더 |
+| 신뢰도 결합 방식 확정 | 진행 예정 |
 | 오류 원인 분석 | 진행 예정 |
 | 검수 시간 측정 | 진행 예정 |
+| 벤치마크셋(100건) 확보·실행 | 진행 예정 |
 
 ## 한계
 
