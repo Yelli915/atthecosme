@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# 시드 CSV에서 재생성되는 빌드 산출물
+data/ingredient_db/ingredients.db
+
+# 실제 벤치마크셋(이미지·manifest)은 용량/저작권 이슈로 별도 관리
+data/benchmark/images/
+data/benchmark/manifest.json

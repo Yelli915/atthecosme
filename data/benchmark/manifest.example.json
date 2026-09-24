@@ -1,0 +1,9 @@
+[
+  {
+    "sample_id": "example-001",
+    "image_path": "data/benchmark/images/example-001.jpg",
+    "product_name_gold": "예시 크림 50ml",
+    "gold_ingredient_ids": [1, 2, 3],
+    "submitted_ingredients": ["정제수", "글리세린", "부틸렌글라이콜"]
+  }
+]
