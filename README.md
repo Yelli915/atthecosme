@@ -118,6 +118,9 @@ ollama pull hf.co/Qwen/Qwen2.5-7B-Instruct-GGUF
 
 # 성분 마스터 DB 초기화 (현재는 샘플 시드 15건 — 실제 DB로 교체 예정)
 python -m pipeline.retrieval.db
+
+# 단위 테스트 (라벨 이미지 없이 실행 가능한 범위: 대조 로직·신뢰도 계산·평가 지표)
+python -m unittest discover -p "test_*.py"
 ```
 
 - 성분 마스터 DB 출처: 아직 확정 안 됨 — 현재는 `data/ingredient_db/seed_ingredients.csv` 샘플 15건으로 코드만 동작 확인 가능한 상태. 실제 출처는 `records/01-사실정리.md`에서 확인 예정.
