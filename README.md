@@ -93,7 +93,7 @@ python -m eval.run_benchmark --manifest data/benchmark/manifest.json
 │   ├── ocr/                 # Stage 1. OCR
 │   ├── retrieval/           # Stage 2. 하이브리드 검색
 │   ├── structured_output/   # Stage 3. 구조화 출력
-│   └── match/                # Stage 4. 대조 (미구현)
+│   └── match/                # Stage 4. 대조
 ├── eval/                    # 벤치마크 및 지표 계산
 ├── data/
 │   ├── benchmark/           # 벤치마크셋 100건 + 확장셋 150건
