@@ -35,7 +35,7 @@
 작은 글자가 밀집된 후면 라벨에서 멀티모달 모델은 성분을 건너뛰는 경향을 보였습니다. 전용 OCR로 텍스트를 먼저 빠짐없이 뽑고 이후를 텍스트 처리로 구성한 구조가 재현율과 비용 모두에서 유리했습니다.
 
 - 측정 시점: 미측정 (표는 목표치 — records/01-사실정리.md에서 실측 후 갱신)
-- 채택 구조(안 4) 사용 엔진: OCR = PaddleOCR, 구조화 출력 = Ollama(qwen2.5:7b) — 로컬 실행. 비교군 GPT-4o-mini
+- 채택 구조(안 4) 사용 엔진: OCR = PaddleOCR, 구조화 출력 = Ollama(hf.co/Qwen/Qwen2.5-7B-Instruct-GGUF) — 로컬 실행. 비교군 GPT-4o-mini
 
 ---
 
@@ -114,7 +114,7 @@ cd <repo>
 pip install -r requirements.txt
 
 # Stage 3용 로컬 LLM 준비 (Ollama 설치 후)
-ollama pull qwen2.5:7b
+ollama pull hf.co/Qwen/Qwen2.5-7B-Instruct-GGUF
 
 # 성분 마스터 DB 초기화 (현재는 샘플 시드 15건 — 실제 DB로 교체 예정)
 python -m pipeline.retrieval.db
@@ -129,7 +129,8 @@ python -m pipeline.retrieval.db
 | 항목 | 상태 |
 | --- | --- |
 | 4안 아키텍처 비교 수치 | 미검증 — 코드 없이 작성된 문서상 목표치, 실측 필요 |
-| Stage 1~3 (OCR → 하이브리드 검색 → 구조화 출력) | 코드 구현 완료, 실제 라벨 이미지로 미검증 |
+| Stage 1 (OCR) | 코드 구현 완료, 실제 라벨 이미지로 미검증 |
+| Stage 2~3 (하이브리드 검색 → 구조화 출력) | 샘플 성분 DB(15건) 기준 실동작 검증 완료 — 로컬 Ollama 모델 호출, 정상 매핑 및 미등록 성분 NOT_FOUND 처리 확인 (`records/07-파이프라인구현.md`). 실제 라벨 OCR 결과 기준 검증은 아직 |
 | Stage 4 (대조) | 코드 구현 완료, 미검증 |
 | Stage 5 (신뢰도 분기) | 검색 점수만 사용한 임시 버전 구현, 임계치(0.90)는 미확정 플레이스홀더 |
 | 신뢰도 결합 방식 확정 | 진행 예정 |

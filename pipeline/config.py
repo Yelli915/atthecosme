@@ -25,7 +25,7 @@ BM25_WEIGHT = 0.5
 DENSE_WEIGHT = 0.5
 
 # Stage 3. 구조화 출력 ---------------------------------------------
-OLLAMA_MODEL = "qwen2.5:7b"  # 로컬 실행, 한국어 성능과 JSON/구조화 출력 준수도를 고려해 선택
+OLLAMA_MODEL = "hf.co/Qwen/Qwen2.5-7B-Instruct-GGUF:latest"  # 로컬 실행, 한국어 성능과 JSON/구조화 출력 준수도를 고려해 선택
 NOT_FOUND_LABEL = "NOT_FOUND"
 
 # Stage 5. 신뢰도 분기 -------------------------------------------------
