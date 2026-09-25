@@ -7,6 +7,7 @@ Ollama(로컬 LLM)의 `format` 파라미터에 JSON Schema를 넘겨 구조적�
 """
 
 import json
+import math
 from dataclasses import dataclass
 
 import ollama
@@ -22,6 +23,7 @@ class NormalizationResult:
     ocr_text: str
     chosen_ingredient_id: int | None  # None이면 NOT_FOUND
     raw_model_output: str
+    token_confidence: float = 1.0  # 생성된 토큰 중 최저 확률 (exp(min(logprob))). 후보가 없어 모델을 호출하지 않은 경우 1.0(확정적 NOT_FOUND)
 
 
 def _candidate_enum_value(candidate: Candidate) -> str:
@@ -54,6 +56,31 @@ def _build_prompt(ocr_text: str, candidates: list[Candidate]) -> str:
     return "\n".join(lines)
 
 
+def _value_token_confidence(raw: str, token_logprobs: list[dict], value: str) -> float:
+    """`raw` 전체가 아니라 실제 선택값(`value`) 문자열에 해당하는 토큰들의 최저 확률만 사용한다.
+
+    `{"ingredient_id": ...}` 중 키 이름·중괄호 등 스키마 고정 부분은 토크나이저 특성상
+    확률이 낮게 나올 수 있는데, 이는 모델의 '선택'과 무관한 노이즈라 신뢰도 계산에서 제외해야 한다.
+    """
+    if not token_logprobs:
+        return 1.0
+    value_start = raw.find(value)
+    if value_start == -1:
+        return math.exp(min(t["logprob"] for t in token_logprobs))
+    value_end = value_start + len(value)
+
+    offset = 0
+    relevant_logprobs = []
+    for t in token_logprobs:
+        start, end = offset, offset + len(t["token"])
+        offset = end
+        if start < value_end and end > value_start:  # 값 구간과 겹치는 토큰만
+            relevant_logprobs.append(t["logprob"])
+    if not relevant_logprobs:
+        relevant_logprobs = [t["logprob"] for t in token_logprobs]
+    return math.exp(min(relevant_logprobs))
+
+
 def normalize_token(ocr_text: str, candidates: list[Candidate], model: str = OLLAMA_MODEL) -> NormalizationResult:
     """OCR 텍스트 하나를 후보 중 하나(또는 NOT_FOUND)로 정규화한다."""
     if not candidates:
@@ -66,11 +93,14 @@ def normalize_token(ocr_text: str, candidates: list[Candidate], model: str = OLL
         model=model,
         messages=[{"role": "user", "content": prompt}],
         format=schema,
+        logprobs=True,
     )
     raw = response["message"]["content"]
+    token_logprobs = response.get("logprobs") or []
 
     valid_ids = {c.ingredient.id for c in candidates}
     chosen_id: int | None = None
+    value = NOT_FOUND_LABEL
     try:
         parsed = json.loads(raw)
         value = parsed.get("ingredient_id", NOT_FOUND_LABEL)
@@ -82,4 +112,8 @@ def normalize_token(ocr_text: str, candidates: list[Candidate], model: str = OLL
     except (json.JSONDecodeError, ValueError, AttributeError):
         chosen_id = None  # 파싱 실패 시 안전하게 NOT_FOUND로 처리
 
-    return NormalizationResult(ocr_text=ocr_text, chosen_ingredient_id=chosen_id, raw_model_output=raw)
+    token_confidence = _value_token_confidence(raw, token_logprobs, value)
+
+    return NormalizationResult(
+        ocr_text=ocr_text, chosen_ingredient_id=chosen_id, raw_model_output=raw, token_confidence=token_confidence
+    )

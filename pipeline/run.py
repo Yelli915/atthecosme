@@ -20,7 +20,8 @@ from pipeline.structured_output.normalize import NormalizationResult, normalize_
 @dataclass
 class TokenNormalization:
     result: NormalizationResult
-    retrieval_confidence: float  # Stage 2 top-1 후보 점수. Stage 5 신뢰도 산출의 현재 유일한 입력.
+    retrieval_confidence: float  # Stage 2 top-1 후보 점수
+    combined_confidence: float  # min(검색 신뢰도, 토큰 신뢰도) — 결합 방식은 임시, records/04에서 실측 후 확정
 
 
 @dataclass
@@ -45,7 +46,10 @@ def run_pipeline(image_path: str, submitted_names: list[str], retriever: HybridR
         candidates = retriever.search(text)
         norm_result = normalize_token(text, candidates)
         top_score = candidates[0].score if candidates else 0.0
-        normalizations.append(TokenNormalization(result=norm_result, retrieval_confidence=top_score))
+        combined = min(top_score, norm_result.token_confidence)
+        normalizations.append(
+            TokenNormalization(result=norm_result, retrieval_confidence=top_score, combined_confidence=combined)
+        )
 
     label_ingredient_ids = {
         n.result.chosen_ingredient_id for n in normalizations if n.result.chosen_ingredient_id is not None
@@ -55,11 +59,11 @@ def run_pipeline(image_path: str, submitted_names: list[str], retriever: HybridR
     submitted_map = resolve_submitted_names(submitted_names, retriever)
     match_result = match(label_ingredient_ids, submitted_map)
 
-    # Stage 5 — 신뢰도 결합 방식은 records/04-신뢰도임계치.md에서 실측 후 확정 예정.
-    # 현재는 검색 신뢰도(Stage 2 top-1 점수)만 사용. 기획서 4장이 언급한
-    # "구조화 출력 토큰 로그 확률" 결합은 Ollama 응답에서 로그 확률을 받는 방법을
-    # 확인한 뒤 추가한다 (로컬 모델/버전에 따라 지원 여부가 다름).
-    confidences = [n.retrieval_confidence for n in normalizations]
+    # Stage 5 — 신뢰도 결합: 검색 신뢰도(Stage 2)와 구조화 출력 토큰 신뢰도(Stage 3, logprobs) 중
+    # 최솟값을 사용 (약한 고리 기준). Ollama가 logprobs를 반환하는 것은 확인됨(정상 동작).
+    # 다만 가중 평균 등 다른 결합 방식과의 비교·최종 확정은 records/04-신뢰도임계치.md에서
+    # 실측 후 진행 — 지금은 계획.md 4단계가 언급한 후보 중 하나를 임시로 쓰는 상태.
+    confidences = [n.combined_confidence for n in normalizations]
     min_confidence = min(confidences) if confidences else 0.0
     has_not_found = any(n.result.chosen_ingredient_id is None for n in normalizations)
     auto_approved = (
